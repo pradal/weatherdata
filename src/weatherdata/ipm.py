@@ -12,9 +12,14 @@ import pandas
 import datetime
 import xarray as xr
 import numpy as np
+import os
+import json
 
 from agroservices import IPM
 
+usecache=True
+pathcache=r"C:\Users\mlabadie\Documents\GitHub\ipm\weatherdata\cache"
+savecache=True
 class WeatherDataSource(object):
     ''' 
     Allows to query weather data resource for a given date range and return
@@ -185,13 +190,38 @@ class WeatherDataSource(object):
             
             interval = pandas.Timedelta(times.freq).seconds
             
-            responses= [self.ipm.get_weatheradapter(
-                                endpoint=self.endpoint(),
-                                weatherStationId=station_id[el],
-                                timeStart=timeStart,
-                                timeEnd=timeEnd,
-                                interval=interval,
-                                parameters=parameters) for el in range(len(station_id))]
+            responses = []
+            for station in station_id:
+                print('start connecting to station', station)
+                try:
+                    path=os.path.join(pathcache,str(station)+'.json')
+                    if usecache and os.path.exists(path):
+                        with open(path) as f:
+                            data=json.load(f)
+
+                    else:
+                        data = self.ipm.get_weatheradapter(
+                                    endpoint=self.endpoint(),
+                                    weatherStationId=station,
+                                    timeStart=timeStart,
+                                    timeEnd=timeEnd,
+                                    interval=interval,
+                                    parameters=parameters)
+                        if savecache and type(data) is dict:
+                            with open(path,'w') as f:
+                                json.dump(data, f)
+
+                    if type(data) is dict:
+                        responses.append(data)
+                        print('data is ok')
+
+                    if type(data) is int:
+                        print("HTTPError:", data, 'for', station)
+                    
+                except:
+                    # log warning 
+                    print("Weather Station %s not available."%(station))
+                
         else:
             station_id=None
             if len(latitude)==len(longitude):
@@ -201,7 +231,7 @@ class WeatherDataSource(object):
                     latitude=latitude[el],
                     longitude=longitude[el]) for el in range(len(latitude))]
             else:
-                raise ValueError("list of latitude and longitude must be have the same lenght")
+                raise ValueError("list of latitude and longitude must be have the same length")
             
             #time variable
             times = pandas.date_range(
