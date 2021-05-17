@@ -32,7 +32,7 @@ class WeatherDataSource(object):
         >>> ws.parameters()
         >>> ws.endpoint()
         >>> ws.check_forecast_endpoint()
-        >>> ws.data(parameters=[1002,3002], station_id=101104, timeStart='2020-06-12',timeEnd='2020-07-03',timezone="UTC", altitude=70,longitude=14.3711,latitude=67.2828, ViewDataFrame=True)
+        >>> ws.data(parameters=[1002,3002], station_id=101104, timeStart='2020-06-12',timeEnd='2020-07-03',timeZone="UTC", altitude=70,longitude=14.3711,latitude=67.2828, ViewDataFrame=True)
     '''
     def __init__(self, name):
         '''
@@ -143,10 +143,10 @@ class WeatherDataSource(object):
     def data(
         self,
         parameters=[1002,3002], 
-        station_id=[101104], 
+        stationId=[101104], 
         timeStart='2020-06-12',
         timeEnd='2020-07-03',
-        timezone="UTC",
+        timeZone="UTC",
         altitude=[70],
         longitude=[14.3711],
         latitude=[67.2828],
@@ -158,7 +158,7 @@ class WeatherDataSource(object):
         -----------
             parameters: list of parameters of weatherdata 
             station_id: (int) station id of weather station 
-            daterange:  a pandas.date_range(start date, end date, freq='H', timezone(tz))
+            daterange:  a pandas.date_range(start date, end date, freq='H', timeZone(tz))
                         https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.date_range.html
             
             Only for forcast:
@@ -175,7 +175,7 @@ class WeatherDataSource(object):
 
         if forcast==False:
             
-            times= pandas.date_range(timeStart,timeEnd,freq='H',tz=timezone)
+            times= pandas.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
 
             timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
             timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
@@ -191,7 +191,7 @@ class WeatherDataSource(object):
             interval = pandas.Timedelta(times.freq).seconds
             
             responses = []
-            for station in station_id:
+            for station in stationId:
                 print('start connecting to station', station)
                 try:
                     path=os.path.join(pathcache,str(station)+'.json')
@@ -223,7 +223,7 @@ class WeatherDataSource(object):
                     print("Weather Station %s not available."%(station))
                 
         else:
-            station_id=None
+            stationId=None
             if len(latitude)==len(longitude):
                 responses = [self.ipm.get_weatheradapter_forecast(
                     endpoint=self.endpoint(), 
@@ -250,9 +250,9 @@ class WeatherDataSource(object):
             data_vars=[{str(responses[el]['weatherParameters'][i]):(['time','location'],dat[el][i]) for i in range(len(responses[el]['weatherParameters']))} for el in range(len(data))]
             
             # construction dictionnaire coordonnée
-            if station_id is not None:
+            if stationId is not None:
                 coords=[{'time':times.values,
-                'location':([station_id[el]]),
+                'location':([stationId[el]]),
                 'lat':[responses[el]['locationWeatherData'][0]['latitude']],
                 'lon':[responses[el]['locationWeatherData'][0]['longitude']],
                 'alt':[responses[el]['locationWeatherData'][0]['altitude']]} 
@@ -273,7 +273,10 @@ class WeatherDataSource(object):
             ds=xr.combine_by_coords(list_ds)
             
             #coordinates attributes
-            ds.coords['location'].attrs['name']= 'WeatherStationId'
+            if stationId is not None:
+                ds.coords['location'].attrs['name']= 'WeatherStationId'
+            else:
+                ds.coords['location'].attrs['name']='[latitude,longitude]'
             ds.coords['lat'].attrs['name']='latitude'
             ds.coords['lat'].attrs['unit']='degrees_north'
             ds.coords['lon'].attrs['name']='longitude'
@@ -288,9 +291,9 @@ class WeatherDataSource(object):
             for el in list(ds.data_vars):
                 ds.data_vars[el].attrs=p[str(el)]
             
-            if station_id is not None:
+            if stationId is not None:
                 ds.attrs['weatherRessource']=self.name
-                ds.attrs['weatherStationId']=station_id
+                ds.attrs['weatherStationId']=stationId
                 ds.attrs['longitude']=list(ds.coords['lon'].values)
                 ds.attrs['latitude']=list(ds.coords['lat'].values)
                 ds.attrs['timeStart']=ds.coords['time'].values[0]

@@ -208,7 +208,7 @@ def test_data_Station_Met_Norway():
     assert rep_ds.coords['time'].attrs=={}
     assert rep_ds.coords['location'].dtype=='<U18'
     assert rep_ds.coords['location'].values=='[67.2828, 14.3711]'
-    #assert rep1_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
+    assert rep_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
     assert rep_ds.coords['lat'].dtype=='float64'
     assert rep_ds.coords['lat'].attrs=={'name': 'latitude', 'unit': 'degrees_north'}
     assert rep_ds.coords['lat'].values==[67.2828]
@@ -277,22 +277,22 @@ def test_data_oneStation_FMI():
 
     Params:
     -------
-        station_id= 101104
+        stationId= [101104]
         parameters = [1002,3002]
         timeStart = '2020-06-12'
         timeEnd = '2020-07-03'
-        timezone = 'UTC'
+        timeZone = 'UTC'
 
     '''
     
     ## test ds format
     fmi=WeatherDataSource(name='Finnish Meteorological Institute measured data')
     rep_ds=fmi.data(
-        station_id=[101104],
+        stationId=[101104],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
@@ -303,7 +303,6 @@ def test_data_oneStation_FMI():
     assert rep_ds.coords['time'].attrs=={}
     assert rep_ds.coords['location'].dtype=='int32'
     assert rep_ds.coords['location'].values==[101104]
-    #assert rep1_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
     assert rep_ds.coords['lat'].dtype=='float64'
     assert rep_ds.coords['lat'].attrs=={'name': 'latitude', 'unit': 'degrees_north'}
     assert rep_ds.coords['lat'].values==[60.81397]
@@ -335,11 +334,11 @@ def test_data_oneStation_FMI():
 
     # format= json
     rep_json=fmi.data(
-        station_id=[101104],
+        stationId=[101104],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="json")
     assert type(rep_json[0]) is dict
     assert keys_exists(rep_json[0],('timeStart', 'timeEnd', 'interval', 'weatherParameters', 'locationWeatherData'))
@@ -354,11 +353,11 @@ def test_data_oneStation_Landbruks():
 
     Params:
     -------
-        station_id= 46
+        stationId= 46
         parameters = [1002,3002]
         timeStart = '2020-06-12'
         timeEnd = '2020-07-03'
-        timezone = 'UTC'
+        timeZone = 'UTC'
     
     Problem: responses is empty this endpoint are not available problem with location
 
@@ -367,11 +366,11 @@ def test_data_oneStation_Landbruks():
     ## test ds format
     land=WeatherDataSource(name='Landbruksmeteorologisk tjeneste')
     rep_ds=land.data(
-        station_id=[46],
+        stationId=[46],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
@@ -401,7 +400,7 @@ def test_data_twoStation_Met_Norway():
     assert rep_ds.coords['time'].attrs=={}
     assert rep_ds.coords['location'].dtype=='<U18'
     assert numpy.all(rep_ds.coords['location'].values==['[67.2828, 14.3711]','[68.3737, 10.1515]'])
-    #assert rep1_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
+    assert rep_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
     assert rep_ds.coords['lat'].dtype=='float64'
     assert rep_ds.coords['lat'].attrs=={'name': 'latitude', 'unit': 'degrees_north'}
     assert numpy.all(rep_ds.coords['lat'].values==[67.2828,68.3737])
@@ -474,22 +473,22 @@ def test_data_twoStation_FMI():
 
     Params:
     -------
-        station_id= [101104,101533]
+        stationId= [101104,101533]
         parameters = [1002,3002]
         timeStart = '2020-06-12'
         timeEnd = '2020-07-03'
-        timezone = 'UTC'
+        timeZone = 'UTC'
 
     '''
     
     ## test ds format
     fmi=WeatherDataSource(name='Finnish Meteorological Institute measured data')
     rep_ds=fmi.data(
-        station_id=[101104,101533],
+        stationId=[101104,101533],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
@@ -500,7 +499,6 @@ def test_data_twoStation_FMI():
     assert rep_ds.coords['time'].attrs=={}
     assert rep_ds.coords['location'].dtype=='int64'
     assert numpy.all(rep_ds.coords['location'].values==[101104, 101533])
-    #assert rep1_ds.coords['location'].attrs=={'name': '[latitude,longitude]'}
     assert rep_ds.coords['lat'].dtype=='float64'
     assert rep_ds.coords['lat'].attrs=={'name': 'latitude', 'unit': 'degrees_north'}
     assert numpy.all(rep_ds.coords['lat'].values==[60.81397, 63.08898])
@@ -532,11 +530,11 @@ def test_data_twoStation_FMI():
 
     # format= json
     rep_json=fmi.data(
-        station_id=[101104,101533],
+        stationId=[101104,101533],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="json")
     
     assert type(rep_json) is list
@@ -554,11 +552,11 @@ def test_data_twoStation_Landbruks():
 
     Params:
     -------
-        station_id= [46,98]
+        stationId= [46,98]
         parameters = [1002,3002]
         timeStart = '2020-06-12'
         timeEnd = '2020-07-03'
-        timezone = 'UTC'
+        timeZone = 'UTC'
     
     Problem: responses is empty this endpoint are not available problem with location
 
@@ -567,11 +565,11 @@ def test_data_twoStation_Landbruks():
     ## test ds format
     land=WeatherDataSource(name='Landbruksmeteorologisk tjeneste')
     rep_ds=land.data(
-        station_id=[46,98],
+        stationId=[46,98],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
-        timezone='UTC',
+        timeZone='UTC',
         format="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
