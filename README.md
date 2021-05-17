@@ -15,20 +15,26 @@ An open source library for data structure for handling weather data
 ## Installation
 
 ```
-conda create -n weatherdata python=2.7 pandas 
+conda create -n weatherdata python pandas numpy xarray 
 conda activate weatherdata
 
-conda install -c conda-forge openalea.deploy
+git clone https://github.com/H2020-IPM-openalea/agroservices.git
+cd agroservices
+python setup.py install
 
 git clone https://github.com/H2020-IPM-openalea/weatherdata.git
+cd weatherdata
+python setup.py install
 
-python setup.py develop
+
 ```
 
 ## Requierements
     * python2.7
     * pandas
-    * openalea.deploy
+    * numpy
+    * xarray
+    * agroservices
 
 ## Documentation
 
