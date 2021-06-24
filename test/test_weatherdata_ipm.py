@@ -9,7 +9,7 @@ list_resources = list(wdh.list_resources())
 def keys_exists(dict_, keys, test = all):
     return test(key in dict_ for key in keys)
 
-def test_list_ressource():
+def testListRessource():
     '''
     Test list_ressource function
     '''
@@ -25,7 +25,7 @@ def test_list_ressource():
             'Metos')
         )
 
-def test_get_ressource():
+def testGetRessource():
     '''
     Test get resource functoin for all ressources
     '''
@@ -35,7 +35,7 @@ def test_get_ressource():
         if isinstance(rep,WeatherDataSource):
             pass
 
-def test_station_id():
+def testStationId():
     '''
     Test station_id function for all ressources
     '''
@@ -43,10 +43,10 @@ def test_station_id():
 
     # Met Norway Locationforecast resource
     assert type(wds_station_ids['Met Norway Locationforecast']) is str
-    assert wds_station_ids['Met Norway Locationforecast'] == 'no stations for this ressources'
+    assert wds_station_ids['Met Norway Locationforecast'] == 'no station information for this resource'
     # FMI weather forecasts resource
     assert type(wds_station_ids['FMI weather forecasts']) is str
-    assert wds_station_ids['FMI weather forecasts'] == 'no stations for this ressources'
+    assert wds_station_ids['FMI weather forecasts'] == 'no station information for this resource'
 
     # Finnish Meteorological Institute measured data resource
     assert type(wds_station_ids['Finnish Meteorological Institute measured data']) is pandas.DataFrame
@@ -62,13 +62,13 @@ def test_station_id():
     assert list(wds_station_ids['MeteoBot API'].columns)==['name', 'id', 'coordinates']
     # Fruitweb resource
     assert type(wds_station_ids['Fruitweb']) is str
-    assert wds_station_ids['Fruitweb'] == 'no stations for this ressources'
+    assert wds_station_ids['Fruitweb'] == 'no station information for this resource'
 
     # Metos resource
     assert type(wds_station_ids['Metos']) is str
-    assert wds_station_ids['Fruitweb'] == 'no stations for this ressources'
+    assert wds_station_ids['Fruitweb'] == 'no station information for this resource'
 
-def test_parameters():
+def testParameters():
     '''
     Test parameters function for all resources
     '''
@@ -114,7 +114,7 @@ def test_parameters():
     assert wds_parameters['Metos']['common'] == [1001, 3001, 2001, 4002] 
     assert wds_parameters['Metos']['optional'] is None
 
-def test_endpoint():
+def testEndpoint():
     '''
     Test endpoint function for all ressources
     '''
@@ -148,7 +148,7 @@ def test_endpoint():
     assert type(wds_endpoints['Metos']) is str
     assert wds_endpoints['Metos']== '/weatheradapter/metos/'
 
-def test_check_forcast():
+def testCheckForcast():
     '''
     Test check_forcast function for all ressources
     '''
@@ -184,7 +184,7 @@ def test_check_forcast():
 
 # test for one argument
 #Test for one stations
-def test_data_Station_Met_Norway():
+def testDataStationMetNorway():
     '''
     Test Met_Norway data function
 
@@ -251,7 +251,7 @@ def test_data_Station_Met_Norway():
     assert rep_json[0]['locationWeatherData'][0]['latitude']==67.2828
     assert rep_json[0]['locationWeatherData'][0]['altitude']==70
 
-def test_data_oneStation_FMI_forecasts():
+def testDataStationFMIForecasts():
     '''
     Test 'FMI weather forecasts' data function for one parameter by argument
 
@@ -271,7 +271,7 @@ def test_data_oneStation_FMI_forecasts():
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
 
-def test_data_oneStation_FMI():
+def testDataStationFMI():
     '''
     Test 'Finnish Meteorological Institute measured data' data function for one parameter by argument
 
@@ -347,7 +347,7 @@ def test_data_oneStation_FMI():
     assert rep_json[0]['locationWeatherData'][0]['latitude']==60.81397
     assert rep_json[0]['locationWeatherData'][0]['altitude']==0.0
 
-def test_data_oneStation_Landbruks():
+def testDataStationLandbruks():
     '''
     Test 'Landbruksmeteorologisk tjeneste' data function for one parameter by argument
 
@@ -376,7 +376,7 @@ def test_data_oneStation_Landbruks():
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
 
 # test for a list of argument
-def test_data_twoStation_Met_Norway():
+def testDataStationsMetNorway():
     '''
     Test Met_Norway data function
 
@@ -447,7 +447,7 @@ def test_data_twoStation_Met_Norway():
         assert rep_json[el]['locationWeatherData'][0]['altitude'] in [70,0.]
        
 
-def test_data_twoStation_FMI_forecasts():
+def testDataStationsFMIForecasts():
     '''
     Test 'FMI weather forecasts' data function for two parameters by argument
 
@@ -467,7 +467,7 @@ def test_data_twoStation_FMI_forecasts():
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
 
-def test_data_twoStation_FMI():
+def testDataStationsFMI():
     '''
     Test 'Finnish Meteorological Institute measured data' data function for one parameter by argument
 
@@ -546,7 +546,7 @@ def test_data_twoStation_FMI():
         assert rep_json[el]['locationWeatherData'][0]['latitude'] in [60.81397, 63.08898]
         assert rep_json[0]['locationWeatherData'][0]['altitude']==0.0
 
-def test_data_twoStation_Landbruks():
+def testDataStationsLandbruks():
     '''
     Test 'Landbruksmeteorologisk tjeneste' data function for one parameter by argument
 
