@@ -8,18 +8,18 @@
 # ==============================================================================
 
 
-import pandas
+import pandas as pd
 import datetime
 import xarray as xr
 import numpy as np
 import os
 import json
-
+import logging
 from agroservices import IPM
+from weatherdata.settings import pathCache
 
-usecache=True
-pathcache=r"C:\Users\mlabadie\Documents\GitHub\ipm\weatherdata\cache"
-savecache=True
+logging.basicConfig(format='%(levelname)s:%(message)s',encoding='utf-8',level=logging.INFO)
+
 class WeatherDataSource(object):
     ''' 
     Allows to query weather data resource for a given date range and return
@@ -40,63 +40,54 @@ class WeatherDataSource(object):
         '''
         self.ipm = IPM()
         self.name = name
-        
-
+        self.sources = self.ipm.get_weatherdatasource()
+    
     def station_ids(self):
         ''' 
         Get a dataframe with station id and coordinate
 
-        Parameters:
+        Parameters
         -----------
 
-        Returns:
+        Returns
         --------
             a dataframe containing name, id and coordinate of station available for weather resource'''
 
-        rep = self.ipm.get_weatherdatasource()  
-
-        values = {item['name']:item['spatial']['geoJSON']for item in rep}
-
-        station_ids = dict()
-        coord = dict()
-
-        for names in values:
-            if 'features' in values[names] and values[names]['features']!=[]:
-                station_ids[names]=[values[names]['features'][item]['properties'] for item in range(len(values[names]['features']))]
-                coord[names]=[values[names]['features'][item]['geometry'] for item in range(len(values[names]['features']))]
+        values = {item['name']:item['spatial']['geoJSON']for item in self.sources}
+        value = values[self.name]
+        
+        if 'features' in value and value['features']!=[]:
+            features = value['features']
+            station_id = [feature['properties'] for feature in features]
+            coords = [feature['geometry']['coordinates'] for feature in features]
+        
+            df_stations= pd.DataFrame(station_id)
+            
+            if len(coords[0])==2:
+                df_coords = pd.DataFrame(coords, columns=['latitude','longitude'])
             else:
-                station_ids[names]= 'no stations for this ressources'
-                coord[names]= 'no stations for this ressources'
-        
-        if station_ids[self.name]=='no stations for this ressources':
-            data= station_ids[self.name]
-
+                df_coords = pd.DataFrame(coords, columns=['latitude','longitude','altitude'])
+            df=[df_stations,df_coords]
+            data = pd.concat(df, axis=1)
+            
         else:
-            df_station_ids = pandas.DataFrame(station_ids[self.name])
-            df_coord = pandas.DataFrame(coord[self.name])
-            df = [df_station_ids,df_coord]
-            data = pandas.concat(df,axis=1)
-            data = data[["name","id","coordinates"]]
-        
+            data = 'no station information for this resource'
+
         return data
 
     def parameters(self):
         """
         Get list of available parameters for ressource
 
-        Parameters:
+        Parameters
         -----------
 
-        Returns:
+        Returns
         --------
             a dictionnary containing common and optional parameters
         """
-        rep = self.ipm.get_weatherdatasource()
-
-        values = {item['name']:item['parameters']for item in rep}
-         
-        if self.name in values:
-           parameters = values[self.name]
+        values = {item['name']:item['parameters']for item in self.sources}
+        parameters = values[self.name]
 
         return parameters
 
@@ -104,10 +95,10 @@ class WeatherDataSource(object):
         """
         Get endpoint associate at the name parameter of WeatherDataSource
 
-        Parameters:
+        Parameters
         -----------
 
-        Returns:
+        Returns
         --------
             a endpoint (str) used in get_data function
         """
@@ -122,10 +113,10 @@ class WeatherDataSource(object):
         """
         Check if endpoint is a forecast or not
         
-        Parameters:
+        Parameters
         -----------
 
-        Returns:
+        Returns
         --------
             Boolean value True if endpoint is a forecast endpoint either False
         """
@@ -150,24 +141,24 @@ class WeatherDataSource(object):
         altitude=[70],
         longitude=[14.3711],
         latitude=[67.2828],
-        format='ds'):
+        format='ds',usecache=True,savecache=True):
         """
         Get weather data from weatherdataressource
 
-        Parameters:
+        Parameters
         -----------
             parameters: list of parameters of weatherdata 
             station_id: (int) station id of weather station 
             daterange:  a pandas.date_range(start date, end date, freq='H', timeZone(tz))
                         https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.date_range.html
             
-            Only for forcast:
+            Only for forcast
             ----------------
             altitude: (list) only for Met Norway Locationforecast WGS84 Decimal degrees
             latitude: (list) WGS84 Decimal degrees
             longitude: (list) WGS84 Decimal degrees
         
-        Returns:
+        Returns
         --------
             return a dataset (format='ds') or json format (format='json') 
         """
@@ -175,8 +166,9 @@ class WeatherDataSource(object):
 
         if forcast==False:
             
-            times= pandas.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
-
+            times= pd.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
+            
+            # time transformation for query format
             timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
             timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
             if times.tz._tzname == 'UTC':
@@ -188,17 +180,18 @@ class WeatherDataSource(object):
                 timeStart += decstr
                 timeEnd += decstr
             
-            interval = pandas.Timedelta(times.freq).seconds
+            interval = pd.Timedelta(times.freq).seconds
+            
             
             responses = []
             for station in stationId:
-                print('start connecting to station', station)
+                logging.info('start connecting to station %s' % station)
                 try:
-                    path=os.path.join(pathcache,str(station)+'.json')
+                    path=os.path.join(pathCache(),str(station)+'.json')
+                    
                     if usecache and os.path.exists(path):
                         with open(path) as f:
                             data=json.load(f)
-
                     else:
                         data = self.ipm.get_weatheradapter(
                                     endpoint=self.endpoint(),
@@ -207,20 +200,19 @@ class WeatherDataSource(object):
                                     timeEnd=timeEnd,
                                     interval=interval,
                                     parameters=parameters)
+                                    
                         if savecache and type(data) is dict:
                             with open(path,'w') as f:
                                 json.dump(data, f)
 
                     if type(data) is dict:
                         responses.append(data)
-                        print('data is ok')
-
-                    if type(data) is int:
-                        print("HTTPError:", data, 'for', station)
+                    elif type(data) is int:
+                        logging.warn("HTTPError:%s" %data %'for%s' %station)
                     
                 except:
                     # log warning 
-                    print("Weather Station %s not available."%(station))
+                    logging.warn("Weather Station not available. %s" %station)
                 
         else:
             stationId=None
@@ -234,7 +226,7 @@ class WeatherDataSource(object):
                 raise ValueError("list of latitude and longitude must be have the same length")
             
             #time variable
-            times = pandas.date_range(
+            times = pd.date_range(
                 start=responses[0]['timeStart'], 
                 end=responses[0]['timeEnd'], 
                 freq="H",
@@ -243,11 +235,11 @@ class WeatherDataSource(object):
 
         if format == 'ds':
             #data conversion in numpy array
-            data= [np.array(responses[el]['locationWeatherData'][0]['data']) for el in range(len(responses))]
-            dat=[[data[el][:,i].reshape(data[el].shape[0],1) for i in range(data[el].shape[1])] for el in range(len(data))]
+            datas= [np.array(response['locationWeatherData'][0]['data']) for response in responses]
+            dats=[[data[:,i].reshape(data.shape[0],1) for i in range(data.shape[1])] for data in datas]
 
             # construction of dict for dataset variable
-            data_vars=[{str(responses[el]['weatherParameters'][i]):(['time','location'],dat[el][i]) for i in range(len(responses[el]['weatherParameters']))} for el in range(len(data))]
+            data_vars=[{str(response['weatherParameters'][i]):(['time','location'],dat[i]) for i in range(len(response['weatherParameters']))} for response in responses for dat in dats]
             
             # construction dictionnaire coordonnée
             if stationId is not None:
@@ -275,14 +267,20 @@ class WeatherDataSource(object):
             #coordinates attributes
             if stationId is not None:
                 ds.coords['location'].attrs['name']= 'WeatherStationId'
+                ds.coords['lat'].attrs['name']='latitude'
+                ds.coords['lat'].attrs['unit']='degrees_north'
+                ds.coords['lon'].attrs['name']='longitude'
+                ds.coords['lon'].attrs['unit']='degrees_east'
+                ds.coords['alt'].attrs['name']='altitude'
+                ds.coords['alt'].attrs['unit']='meters'
             else:
                 ds.coords['location'].attrs['name']='[latitude,longitude]'
-            ds.coords['lat'].attrs['name']='latitude'
-            ds.coords['lat'].attrs['unit']='degrees_north'
-            ds.coords['lon'].attrs['name']='longitude'
-            ds.coords['lon'].attrs['unit']='degrees_east'
-            ds.coords['alt'].attrs['name']='altitude'
-            ds.coords['alt'].attrs['unit']='meters'
+                ds.coords['lat'].attrs['name']='latitude'
+                ds.coords['lat'].attrs['unit']='degrees_north'
+                ds.coords['lon'].attrs['name']='longitude'
+                ds.coords['lon'].attrs['unit']='degrees_east'
+                ds.coords['alt'].attrs['name']='altitude'
+                ds.coords['alt'].attrs['unit']='meters'                
 
             #variable attribute
             param = self.ipm.get_parameter()
@@ -330,6 +328,7 @@ class WeatherDataHub(object):
             Give an access to IPM interface from agroservice
         """
         self.ipm = IPM()
+        self.sources = self.ipm.get_weatherdatasource()
 
     def list_resources(self):
         """
@@ -342,8 +341,8 @@ class WeatherDataHub(object):
         ---------
             dictionnary with name and description of available weatherdatasource on IPM service
         """
-        rep = self.ipm.get_weatherdatasource()
-        return {item['name']:item['description'] for item in rep}
+        
+        return {item['name']:item['description'] for item in self.sources}
         
     def get_ressource(self, name):
         """
@@ -355,8 +354,7 @@ class WeatherDataHub(object):
         --------
             run weatherdatasource with the name of resource
         """
-        rep = self.ipm.get_weatherdatasource()
-        keys = [item['name'] for item in rep]
+        keys = [item['name'] for item in self.sources]
         if name in keys:
             return WeatherDataSource(name)
         else:
