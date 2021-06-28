@@ -50,16 +50,16 @@ def testStationId():
 
     # Finnish Meteorological Institute measured data resource
     assert type(wds_station_ids['Finnish Meteorological Institute measured data']) is pandas.DataFrame
-    assert wds_station_ids['Finnish Meteorological Institute measured data'].shape==(208,3)
-    assert list(wds_station_ids['Finnish Meteorological Institute measured data'].columns)==['name', 'id', 'coordinates']
+    assert wds_station_ids['Finnish Meteorological Institute measured data'].shape==(208,4)
+    assert list(wds_station_ids['Finnish Meteorological Institute measured data'].columns)==['name', 'id', 'latitude','longitude']
     # Landbruksmeteorologisk tjeneste resource
     assert type(wds_station_ids['Landbruksmeteorologisk tjeneste']) is pandas.DataFrame
-    assert wds_station_ids['Landbruksmeteorologisk tjeneste'].shape==(92,3)
-    assert list(wds_station_ids['Landbruksmeteorologisk tjeneste'].columns)==['name', 'id', 'coordinates']
+    assert wds_station_ids['Landbruksmeteorologisk tjeneste'].shape==(92,6)
+    assert list(wds_station_ids['Landbruksmeteorologisk tjeneste'].columns)==["name","id","WMOCertified","latitude","longitude","altitude"]
     # MeteoBot API resource
     assert type(wds_station_ids['MeteoBot API']) is pandas.DataFrame
-    assert wds_station_ids['MeteoBot API'].shape==(528,3)
-    assert list(wds_station_ids['MeteoBot API'].columns)==['name', 'id', 'coordinates']
+    assert wds_station_ids['MeteoBot API'].shape==(528,4)
+    assert list(wds_station_ids['MeteoBot API'].columns)==['name', 'id', 'latitude','longitude']
     # Fruitweb resource
     assert type(wds_station_ids['Fruitweb']) is str
     assert wds_station_ids['Fruitweb'] == 'no station information for this resource'
