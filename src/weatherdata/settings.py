@@ -1,12 +1,21 @@
 from pathlib import Path
 
-def pathCache():
+PATH_CACHE = Path.home()/'weatherdata'/'cache'
+
+def create_dir(path):
+    if not path.exists():
+        create_dir(path.parent)
+        path.mkdir()
+    else:
+        pass
+
+def pathCache(path=None):
     '''
     Create pathCache directory
     '''
-    path= Path('src/cache')
-    if not path.exists():
-        path.mkdir()
+    if path==None:
+        path=PATH_CACHE
 
+    create_dir(path)
     return path
 
