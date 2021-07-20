@@ -1,0 +1,15 @@
+name: weatherdata
+channels:
+  - conda-forge
+
+dependencies:
+ - pandas
+ - numpy
+ - xarray
+ - pytest
+ - sphinx_rtd_theme
+ - nbsphinx
+ - nbsphinx-link
+ - pip:
+  - git+https://github.com/H2020-IPM-openalea/agroservices.git@master
+  
