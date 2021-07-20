@@ -1,0 +1,12 @@
+name: weatherdata
+channels:
+  - conda-forge
+
+dependencies:
+ - pandas
+ - numpy
+ - xarray
+ - pytest
+ - sphinx_rtd_theme
+ - nbsphinx
+ - nbsphinx-link

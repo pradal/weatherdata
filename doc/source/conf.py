@@ -35,20 +35,15 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.coverage',
     'sphinx.ext.todo',
     'sphinx.ext.napoleon',
-    'sphinx.ext.graphviz',
-    'sphinx.ext.inheritance_diagram',
-    'sphinx.ext.mathjax',
     'nbsphinx',
-    'nbsphinx_link'
-    # 'jupyter_sphinx'
+    'nbsphinx_link',
+    'sphinx_rtd_theme'
 ]
-
 # generate autosummary even if no references
 autosummary_generate = True
 
