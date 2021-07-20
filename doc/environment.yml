@@ -11,5 +11,4 @@ dependencies:
  - nbsphinx
  - nbsphinx-link
  - pip:
-  - git+https://github.com/H2020-IPM-openalea/agroservices.git@master
-  
+   - git+https://github.com/H2020-IPM-openalea/agroservices.git@master
