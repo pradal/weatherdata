@@ -1,3 +1,4 @@
+[![Documentation Status](https://readthedocs.org/projects/weatherdata/badge/?version=latest)](https://weatherdata.readthedocs.io/en/latest/?badge=latest)
 # openalea.weatherdata
 
 **Authors**: 
