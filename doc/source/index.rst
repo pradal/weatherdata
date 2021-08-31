@@ -16,16 +16,15 @@ Installation
    ./install/index.rst
 
 
-# Quick start
-# ----------------------
+Quick start
+----------------------
 
 #.. toctree::
 #
 #   ./user/quick_start.rst
 
-
-#Gallery
-#-----------
+Gallery
+-----------
 #.. toctree::
 #
 #   ./user/gallery.rst
@@ -34,25 +33,25 @@ Installation
 #Documentation
 #-------------
 
-#Weatherdata User Guide
-#'''''''''''''''''''''
+Weatherdata User Guide
+'''''''''''''''''''''
 
-#.. toctree::
+.. toctree::
 
-#   ./user/index.rst
+   ./user/index.rst
 
 
-#References
-#-----------
+References
+-----------
 
-#.. toctree::
+.. toctree::
 
-#   ./references/index.rst
+   ./references/index.rst
 
-#Authors
-#-------
+Authors
+-------
 
-#.. include:: ../../AUTHORS.rst
+.. include:: ../../AUTHORS.rst
 
 
 License
