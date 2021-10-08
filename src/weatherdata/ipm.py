@@ -293,7 +293,7 @@ class WeatherDataSource(object):
                 for el in range(len(responses))]
                
                 
-            # list de dss
+            # list de ds
             list_ds=[xr.Dataset(data_vars[el], coords=coords[el]) for el in range(len(responses))]
             #merge ds
             ds=xr.combine_by_coords(list_ds)
