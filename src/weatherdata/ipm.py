@@ -136,6 +136,7 @@ class WeatherDataSource(object):
         altitude: list[Union[int,float]] = [70.0],
         longitude: list[Union[int,float]] = [14.3711],
         latitude: list[Union[int,float]] = [67.2828],
+        credentials: dict = None,
         format: str ='ds',
         usecache: bool=False,
         savecache: bool=False) -> Union[xr.Dataset,list[dict]]:
@@ -182,82 +183,83 @@ class WeatherDataSource(object):
         forcast=self.check_forecast_endpoint()
 
         if forcast==False:
+            # times= pd.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
             
-            times= pd.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
+            # # time transformation for query format
+            # timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
+            # timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
+            # if times.tz._tzname == 'UTC':
+            #     timeStart +='Z'
+            #     timeEnd += 'Z'
+            # else:
+            #     decstr = times[0].strftime('%z')
+            #     decstr = decstr[:-2] + ':' + decstr[-2:]
+            #     timeStart += decstr
+            #     timeEnd += decstr
             
-            # time transformation for query format
-            timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
-            timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
-            if times.tz._tzname == 'UTC':
-                timeStart +='Z'
-                timeEnd += 'Z'
-            else:
-                decstr = times[0].strftime('%z')
-                decstr = decstr[:-2] + ':' + decstr[-2:]
-                timeStart += decstr
-                timeEnd += decstr
-            
-            interval = pd.Timedelta(times.freq).seconds
+            #interval = pd.Timedelta(times.freq).seconds
+            interval=3600
 
             responses = []
             for station in stationId:
                 logging.info('start connecting to station %s' % station)
 
-                try:
-                    path=os.path.join(pathCache(),str(station)+'_'+str(parameters)+"_"+timeStart.split("T")[0]+"_"+timeEnd.split("T")[0]+'.json')
-                    
-                    if usecache and os.path.exists(path):
-                        with open(path) as f:
-                            data=json.load(f)
-                    else:
-                        data = self.ipm.get_weatheradapter(
-                                    endpoint=self.endpoint(),
-                                    weatherStationId=station,
-                                    timeStart=timeStart,
-                                    timeEnd=timeEnd,
-                                    interval=interval,
-                                    parameters=parameters)
-                                    
-                    if type(data) is dict:
-                        responses.append(data)
-                    elif type(data) is int:
-                        logging.warning("HTTPError:%s" %data %'for%s' %station)
+            
+                path=os.path.join(pathCache(),str(station)+'_'+str(parameters)+"_"+timeStart.split("T")[0]+"_"+timeEnd.split("T")[0]+'.json')
+                
+                if usecache and os.path.exists(path):
+                    with open(path) as f:
+                        data=json.load(f)
+                else:
+                    data = self.ipm.get_weatheradapter(
+                                endpoint=self.endpoint(),
+                                weatherStationId=station,
+                                timeStart=timeStart,
+                                timeEnd=timeEnd,
+                                interval=interval,
+                                parameters=parameters,
+                                credentials= credentials)
+                                
+                if type(data) is dict:
+                    responses.append(data)
+                elif type(data) is int:
+                    logging.warning("HTTPError:%s" %data %'for%s' %station)
 
-                    if savecache and type(data) is dict:
-                        with open(path,'w') as f:
-                            json.dump(data, f)
-                        
-                except:
-                    # log warning 
-                    logging.warning("Weather Station not available. %s" %station)        
+                if savecache and type(data) is dict:
+                    with open(path,'w') as f:
+                        json.dump(data, f)
+                
+                times = pd.date_range(
+                    start=responses[0]['timeStart'], 
+                    end=responses[0]['timeEnd'], 
+                    freq="H",
+                    name="time")
+                    
         else:
             stationId=None
             responses=[]
             
             for el in range(len(latitude)):
-                try:
-                    path=os.path.join(pathCache(),str(altitude[el])+'_'+str(latitude[el])+"_"+str(longitude[el])+'.json')
-                
-                    if usecache and os.path.exists(path):
-                        with open(path) as f:
-                            data=json.load(f)
-                    else:
-                        data= self.ipm.get_weatheradapter_forecast(
-                            endpoint=self.endpoint(), 
-                            altitude= altitude[el],
-                            latitude=latitude[el],
-                            longitude=longitude[el])
+                path=os.path.join(pathCache(),str(altitude[el])+'_'+str(latitude[el])+"_"+str(longitude[el])+'.json')
+            
+                if usecache and os.path.exists(path):
+                    with open(path) as f:
+                        data=json.load(f)
+                else:
+                    data= self.ipm.get_weatheradapter_forecast(
+                        endpoint=self.endpoint(), 
+                        altitude= altitude[el],
+                        latitude=latitude[el],
+                        longitude=longitude[el])
 
-                    if type(data) is dict:
-                        responses.append(data)
-                    elif type(data) is int:
-                        logging.warning("HTTPError:%s" %data %'for%s' %[altitude[el],latitude[el],longitude[el]])
-                    
-                    if savecache and type(data) is dict:
-                        with open(path,'w') as f:
-                            json.dump(data, f)
-                except:
-                    logging.warning("list of latitude and longitude must be have the same length")
+                if type(data) is dict:
+                    responses.append(data)
+                elif type(data) is int:
+                    logging.warning("HTTPError:%s" %data %'for%s' %[altitude[el],latitude[el],longitude[el]])
+                
+                if savecache and type(data) is dict:
+                    with open(path,'w') as f:
+                        json.dump(data, f)
         
             #time variable
             times = pd.date_range(
@@ -265,7 +267,6 @@ class WeatherDataSource(object):
                 end=responses[0]['timeEnd'], 
                 freq="H",
                 name="time")
-
 
         if format == 'ds':
             #data conversion in numpy array
@@ -297,7 +298,7 @@ class WeatherDataSource(object):
             list_ds=[xr.Dataset(data_vars[el], coords=coords[el]) for el in range(len(responses))]
             #merge ds
             ds=xr.combine_by_coords(list_ds)
-            
+
             #coordinates attributes
             if stationId:
                 ds.coords['location'].attrs['name']= 'WeatherStationId'
