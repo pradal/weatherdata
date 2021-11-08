@@ -44,6 +44,7 @@ def testStationId():
     # Met Norway Locationforecast resource
     assert type(wds_station_ids['Met Norway Locationforecast']) is str
     assert wds_station_ids['Met Norway Locationforecast'] == 'no station information for this resource'
+    #Deutsche Wetterdienst location forecast by IPM Decisions
     # FMI weather forecasts resource
     assert type(wds_station_ids['FMI weather forecasts']) is str
     assert wds_station_ids['FMI weather forecasts'] == 'no station information for this resource'
@@ -122,31 +123,31 @@ def testEndpoint():
 
     # Met Norway Locationforecast resource
     assert type(wds_endpoints['Met Norway Locationforecast']) is str
-    assert wds_endpoints['Met Norway Locationforecast']== '/weatheradapter/yr/'
+    assert wds_endpoints['Met Norway Locationforecast']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/yr/'
 
     # FMI weather forecasts resource
     assert type(wds_endpoints['FMI weather forecasts']) is str
-    assert wds_endpoints['FMI weather forecasts']== '/weatheradapter/fmi/forecasts'
+    assert wds_endpoints['FMI weather forecasts']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/fmi/forecasts'
 
     # Finnish Meteorological Institute measured data resource
     assert type(wds_endpoints['Finnish Meteorological Institute measured data']) is str
-    assert wds_endpoints['Finnish Meteorological Institute measured data']== '/weatheradapter/fmi/'
+    assert wds_endpoints['Finnish Meteorological Institute measured data']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/fmi/'
 
     # Landbruksmeteorologisk tjeneste resource
     assert type(wds_endpoints['Landbruksmeteorologisk tjeneste']) is str
-    assert wds_endpoints['Landbruksmeteorologisk tjeneste']== '/ipmdecisions/getdata/'
+    assert wds_endpoints['Landbruksmeteorologisk tjeneste']== 'https://lmt.nibio.no/services/rest/ipmdecisions/getdata/'
 
     # MeteoBot API resource
     assert type(wds_endpoints['MeteoBot API']) is str
-    assert wds_endpoints['MeteoBot API']== '/weatheradapter/meteobot/'
+    assert wds_endpoints['MeteoBot API']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/meteobot/'
 
     # Fruitweb resource
     assert type(wds_endpoints['Fruitweb']) is str
-    assert wds_endpoints['Fruitweb']== '/weatheradapter/davisfruitweb/'
+    assert wds_endpoints['Fruitweb']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/davisfruitweb/'
 
     # Metos resource
     assert type(wds_endpoints['Metos']) is str
-    assert wds_endpoints['Metos']== '/weatheradapter/metos/'
+    assert wds_endpoints['Metos']== 'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/metos/'
 
 def testCheckForcast():
     '''
