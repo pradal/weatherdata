@@ -137,7 +137,9 @@ class WeatherDataSource(object):
         longitude: list[Union[int,float]] = [14.3711],
         latitude: list[Union[int,float]] = [67.2828],
         credentials: dict = None,
+        interval: int = 3600,
         format: str ='ds',
+        varname:str = 'id',
         usecache: bool=False,
         savecache: bool=False) -> Union[xr.Dataset,list[dict]]:
         
@@ -183,22 +185,8 @@ class WeatherDataSource(object):
         forcast=self.check_forecast_endpoint()
 
         if forcast==False:
-            # times= pd.date_range(timeStart,timeEnd,freq='H',tz=timeZone)
             
-            # # time transformation for query format
-            # timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
-            # timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
-            # if times.tz._tzname == 'UTC':
-            #     timeStart +='Z'
-            #     timeEnd += 'Z'
-            # else:
-            #     decstr = times[0].strftime('%z')
-            #     decstr = decstr[:-2] + ':' + decstr[-2:]
-            #     timeStart += decstr
-            #     timeEnd += decstr
-            
-            #interval = pd.Timedelta(times.freq).seconds
-            interval=3600
+            interval=interval
 
             responses = []
             for station in stationId:
@@ -228,12 +216,6 @@ class WeatherDataSource(object):
                 if savecache and type(data) is dict:
                     with open(path,'w') as f:
                         json.dump(data, f)
-                
-                times = pd.date_range(
-                    start=responses[0]['timeStart'], 
-                    end=responses[0]['timeEnd'], 
-                    freq="H",
-                    name="time")
                     
         else:
             stationId=None
@@ -261,12 +243,16 @@ class WeatherDataSource(object):
                     with open(path,'w') as f:
                         json.dump(data, f)
         
-            #time variable
-            times = pd.date_range(
-                start=responses[0]['timeStart'], 
-                end=responses[0]['timeEnd'], 
-                freq="H",
-                name="time")
+        #time variable
+        times = pd.date_range(
+            start=responses[0]['timeStart'], 
+            end=responses[0]['timeEnd'], 
+            freq="H",
+            name="time")
+        
+        times.strftime('%Y-%m-%dT%H:%M:%S')
+
+
 
         if format == 'ds':
             #data conversion in numpy array
@@ -296,6 +282,7 @@ class WeatherDataSource(object):
                 
             # list de ds
             list_ds=[xr.Dataset(data_vars[el], coords=coords[el]) for el in range(len(responses))]
+            
             #merge ds
             ds=xr.combine_by_coords(list_ds)
 
@@ -319,8 +306,9 @@ class WeatherDataSource(object):
 
             #variable attribute
             param = self.ipm.get_parameter()
-            p={str(item['id']): item for item in param if item['id'] in responses[0]['weatherParameters']}
             
+            p={str(item['id']): item for item in param if item['id'] in responses[0]['weatherParameters']}
+                
             
             for el in list(ds.data_vars):
                 try:
@@ -328,6 +316,8 @@ class WeatherDataSource(object):
                 except KeyError as e:
                     logging.exception("The weatherParameter not implemented; key error: %s".format(e))
 
+            if varname == 'name': 
+                ds= ds.rename_vars(name_dict={str(ds[el].attrs['id']):ds[el].attrs['name'] for el in list(ds.keys())})
             
             if stationId:
                 ds.attrs['weatherRessource']=self.name
