@@ -15,12 +15,12 @@ import numpy as np
 import os
 import json
 import logging
-from typing import Union
+from typing import Union, List
 from agroservices import IPM
 
 from weatherdata.settings import pathCache
 
-logging.basicConfig(format='%(levelname)s:%(message)s',encoding='utf-8',level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s',level=logging.INFO)
 
 class WeatherDataSource(object):
     ''' 
@@ -57,7 +57,7 @@ class WeatherDataSource(object):
             dataframe containing name, id and coordinate of station available for weather resource
         """          
         values = {item['name']:item['spatial']['geoJSON']for item in self.sources}
-        value = values[self.name]
+        value = json.loads(values[self.name])
         
         if 'features' in value and value['features']!=[]:
             features = value['features']
@@ -128,20 +128,20 @@ class WeatherDataSource(object):
 
     def data(
         self,
-        parameters: list[int]=[1002,3002], 
-        stationId: list[int]=[101104], 
+        parameters: List[int]=[1002,3002], 
+        stationId: List[int]=[101104], 
         timeStart: str = '2020-06-12',
         timeEnd: str = '2020-07-03',
         timeZone: str = "UTC",
-        altitude: list[Union[int,float]] = [70.0],
-        longitude: list[Union[int,float]] = [14.3711],
-        latitude: list[Union[int,float]] = [67.2828],
+        altitude: List[Union[int,float]] = [70.0],
+        longitude: List[Union[int,float]] = [14.3711],
+        latitude: List[Union[int,float]] = [67.2828],
         credentials: dict = None,
         interval: int = 3600,
         format: str ='ds',
         varname:str = 'id',
         usecache: bool=False,
-        savecache: bool=False) -> Union[xr.Dataset,list[dict]]:
+        savecache: bool=False) -> Union[xr.Dataset,List[dict]]:
         
         """ Get weather data from WeatherDataSource
 
@@ -211,7 +211,7 @@ class WeatherDataSource(object):
                 if type(data) is dict:
                     responses.append(data)
                 elif type(data) is int:
-                    logging.warning("HTTPError:%s" %data %'for%s' %station)
+                    logging.warning('HTTPError:%s' %data %'for%s' %station)
 
                 if savecache and type(data) is dict:
                     with open(path,'w') as f:
@@ -266,17 +266,17 @@ class WeatherDataSource(object):
             if stationId:
                 coords=[{'time':times.values,
                 'location':([stationId[el]]),
-                'lat':[responses[el]['locationWeatherData'][0]['latitude']],
-                'lon':[responses[el]['locationWeatherData'][0]['longitude']],
-                'alt':[responses[el]['locationWeatherData'][0]['altitude']]} 
+                'lat':[float(responses[el]['locationWeatherData'][0]['latitude'])],
+                'lon':[float(responses[el]['locationWeatherData'][0]['longitude'])],
+                'alt':[float(responses[el]['locationWeatherData'][0]['altitude'])]} 
                 for el in range(len(responses))]
                 
             else:
                 coords=[{'time':times.values,
                 'location':([str([latitude[el],longitude[el]])]),
-                'lat':[responses[el]['locationWeatherData'][0]['latitude']],
-                'lon':[responses[el]['locationWeatherData'][0]['longitude']],
-                'alt':[responses[el]['locationWeatherData'][0]['altitude']]} 
+                'lat':[float(responses[el]['locationWeatherData'][0]['latitude'])],
+                'lon':[float(responses[el]['locationWeatherData'][0]['longitude'])],
+                'alt':[float(responses[el]['locationWeatherData'][0]['altitude'])]} 
                 for el in range(len(responses))]
                
                 
