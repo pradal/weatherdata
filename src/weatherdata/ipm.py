@@ -64,13 +64,13 @@ class WeatherDataHub:
                      
     
     def __forecast__(self):
-        return {key:bool(value["temporal"]["forecast"])for key,value in ws.__resources__.items()}
+        return {key:bool(value["temporal"]["forecast"])for key,value in self.__resources__.items()}
     
     def __endpoint__(self):
-        return {key: value["endpoint"] for key, value in ws.__resources__.items()}
+        return {key: value["endpoint"] for key, value in self.__resources__.items()}
     
         
-    def get_ressource(self, name: str):
+    def get_ressource(self, name,df: str):
         """ Get ressource from WeatherDataSource
 
         Parameters
@@ -88,21 +88,28 @@ class WeatherDataHub:
         NotImplementedError
             the resource is unknown or the name of the resource is misspelled
         """        
-        keys = [item for item in self.__resources__]
+        if name is not None:
+            keys = [item for item in self.__resources__]
 
-        if name in keys:
-            return WeatherDataSource(name,forecast=self.__forecast__()[name],endpoint=self.__endpoint__()[name])
-        else:
-            raise NotImplementedError("the resource is unknown or the name of the resource is misspelled")
+            if name in keys:
+                return WeatherDataSource(name,forecast=self.__forecast__()[name],endpoint=self.__endpoint__()[name], df= None)
+            else:
+                raise NotImplementedError("the resource is unknown or the name of the resource is misspelled")
+        if df is not None:
+            name=None
+            return WeatherDataSource(name=None,forecast=None,endpoint=None,df=df)
+            
 
 class WeatherDataSource(WeatherDataHub):
-    def __init__(self, name, forecast,endpoint):
+    def __init__(self, name, forecast,endpoint,df):
         self.name = name
         self.forecast=forecast
         self.endpoint=endpoint
         self.sources=None
         self.ipm = IPM()
-    
+        self.df= df
+        
+  
     @property
     def __source__(self):
         
@@ -282,13 +289,7 @@ class WeatherDataSource(WeatherDataHub):
         
         if display != "ds":
             return responses
-        else:
-            # times = pandas.date_range(
-            #     start=responses[0]['timeStart'], 
-            #     end=responses[0]['timeEnd'], 
-            #     freq="H",
-            #     name="time")
-            
+        else:          
             times=pandas.date_range(start=responses[0]["timeStart"],
                                     end=responses[0]["timeEnd"],
                                     freq=str(responses[0]["interval"])+"S",
@@ -332,7 +333,7 @@ class WeatherDataSource(WeatherDataHub):
             #add coordinates attributes
             if stationId:
                 ds.coords['time'].attrs["name"]="time"
-                #ds.coords['location'].attrs['name']= 'WeatherStationId'
+                ds.coords['location'].attrs['name']= 'WeatherStationId'
                 ds.coords['lat'].attrs['name']='latitude'
                 ds.coords['lat'].attrs['unit']='degrees_north'
                 ds.coords['lon'].attrs['name']='longitude'
@@ -358,7 +359,7 @@ class WeatherDataSource(WeatherDataHub):
             # Attribute of dataset
             if stationId:
                 ds.attrs['weatherRessource']=self.name
-                ds.attrs['weatherStationId']=stationId
+                #ds.attrs['weatherStationId']=stationId
                 ds.attrs['timeStart']=str(ds.coords['time'].values[0])
                 ds.attrs['timeEnd']=str(ds.coords['time'].values[-1])
                 ds.attrs['parameters']=list(ds.data_vars)
@@ -372,3 +373,66 @@ class WeatherDataSource(WeatherDataHub):
                 ds= ds.rename_vars(name_dict={str(ds[el].attrs['id']):ds[el].attrs['name'] for el in list(ds.keys())}) 
                 
         return ds
+    
+    def dataframe_to_ipm(self,longitude=3.87, 
+                       latitude=43.61,
+                       altitude=0.0,
+                       timezone="Europe/Paris",
+                       interval=3600,
+                       convert_name={'temperature_air':1002,
+                                     "relative_humidity":3001,
+                                     "rain":2001,
+                                     "wind_speed":4005,
+                                     "global_radiation":5001},
+                       display="json"):
+        """Convert weather dataframe into IPM weather output schema
+
+        Parameters
+        ----------
+        longitude : float, optional
+            longitudinal coordinate in degree of the weather dataframe, by default 3.87
+        latitude : float, optional
+            latitude coordinate in degree of the weather dataframe  , by default 43.61
+        altitude : float, optional
+            altitude coordinate in degree of the weather dataframe, by default 0.0
+        timezone : str, optional
+            time zone of dataframe eg. Europe/Paris if weatherdata is in france, by default "Europe/Paris"
+        interval : int, optional
+            interval time between index in second eg 3600 if weather data is in hour , by default 3600
+        convert_name : dict, optional
+            dict of conversion between weather dataframe and ipm parameters, by default {'temperature_air':1002, "relative_humidity":3001, "rain":2001, "wind_speed":4005, "global_radiation":5001}
+        display : str, optional
+            choose the type of data according json schema ipm or ds in xarray.dataset , by default "json"
+
+        Returns
+        -------
+        json or xarray.dataset
+            return data in weatherdata according to ipm input (json) or in xarray.dataset (ds)
+        """
+        
+        
+        data=self.df
+        data=data.rename(columns=convert_name)
+        time=pandas.date_range(start=data.index[0],end=data.index[-1],tz="Europe/Paris",freq=str(interval)+"s").tz_convert("UTC").strftime('%Y-%m-%dT%H:%M:%S')+"Z"
+        
+        weather_ipm_schema={}
+        weather_ipm_schema["timeStart"]=time.tolist()[0]
+        weather_ipm_schema["timeEnd"]=time.tolist()[-1]
+        weather_ipm_schema["interval"]=interval
+        weather_ipm_schema['weatherParameters']=data.columns.to_list()
+        weather_ipm_schema["locationWeatherData"]=[
+            {"longitude":longitude,
+            "latitude":latitude,
+            "altitude":altitude,
+            "amalgamation":np.repeat(0,data.shape[1]).tolist(),
+            "data":np.array(data).tolist(),
+            "qc":np.repeat(0,data.shape[1]).tolist(),
+            "width":data.shape[1],
+            "length":data.shape[0]}
+        ]
+        
+        if display=="ds":
+            return self.__convert_xarray_dataset__([weather_ipm_schema],stationId=None,varname="id",display="ds")
+        else:
+            responses=weather_ipm_schema
+        return [responses]
