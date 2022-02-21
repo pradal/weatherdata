@@ -30,7 +30,7 @@ python setup.py install
 ```
 
 ## Requierements
-    * python2.7
+    * python >=3
     * pandas
     * numpy
     * xarray
