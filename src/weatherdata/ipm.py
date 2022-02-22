@@ -8,12 +8,16 @@
 # ==============================================================================
 
 
+from unicodedata import name
 import pandas 
 import xarray as xr
 import numpy as np
 import os
 import json
 import logging
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfea
 
 from agroservices import IPM
 
@@ -39,12 +43,16 @@ class WeatherDataHub:
         """
         self.ipm = IPM()
         self.sources = None
+        self.local_sources=[]
     
     @property
     def __resources__(self):
         
         if self.sources is None:
             self.sources= self.ipm.get_weatherdatasource()
+            
+        if len(self.local_sources)>0:
+            self.sources.append(self.local_sources)
         
         return {item["name"]:item for item in self.sources}
     
@@ -56,13 +64,20 @@ class WeatherDataHub:
         -------
         pandas.DataFrame
             name and description of available weatherdatasource on IPM service
-        """   
+        """  
+        # if local:
+        #     return list(self.local_sources)
+            
+        # else: 
         df= pandas.DataFrame(self.__resources__).T.reset_index()
         df.rename({"index":"name"},inplace=True)
-        
         return df[["name","description","parameters"]]
-                     
     
+    @property                 
+    def parameters(self):
+        ipm_parameter=self.ipm.get_parameter()
+        return pandas.DataFrame.from_records(ipm_parameter)
+
     def __forecast__(self):
         return {key:bool(value["temporal"]["forecast"])for key,value in self.__resources__.items()}
     
@@ -70,7 +85,7 @@ class WeatherDataHub:
         return {key: value["endpoint"] for key, value in self.__resources__.items()}
     
         
-    def get_ressource(self, name,df: str):
+    def get_ressource(self, name:str):
         """ Get ressource from WeatherDataSource
 
         Parameters
@@ -88,33 +103,113 @@ class WeatherDataHub:
         NotImplementedError
             the resource is unknown or the name of the resource is misspelled
         """        
-        if name is not None:
+        if name in self.local_sources:
+            return WeatherDataSource(name=name,forecast=None,endpoint=None,df=self.local_sources["endpoint"])
+        else:
             keys = [item for item in self.__resources__]
-
             if name in keys:
-                return WeatherDataSource(name,forecast=self.__forecast__()[name],endpoint=self.__endpoint__()[name], df= None)
+                return WeatherDataSource(name,forecast=self.__forecast__()[name],endpoint=self.__endpoint__()[name])
             else:
                 raise NotImplementedError("the resource is unknown or the name of the resource is misspelled")
-        if df is not None:
-            name=None
-            return WeatherDataSource(name=None,forecast=None,endpoint=None,df=df)
+            
+        
+    def add_local_ressource(self,
+                            name,
+                            data, 
+                            longitude=3.87,
+                            latitude=43.61,
+                            altitude=0,
+                            timezone="Europe/Paris",
+                            interval=3600,
+                            convert_name={
+                                'temperature_air': 1002,
+                                "relative_humidity": 3001,
+                                "rain": 2001,
+                                "wind_speed": 4005,
+                                "global_radiation": 5001}):
+        
+        data = data.rename(columns=convert_name)
+        
+        data.attrs={"longitude":longitude,
+                    "latitude":latitude,
+                    "altitude":altitude,
+                    "timezone":timezone,
+                    "interval":interval}
+        
+        d={"id":"personal data",
+           "name": name,
+           "description": "personal data",
+           "public_URL": None,
+           "endpoint":data,
+           "authentication_type":None,
+           "needs_data_control":False,
+           "access_type":'location',
+           "priority":0,
+           "temporal" : {"forecast" : None,
+                         "historic" : {"start": data.index.tolist()[0].strftime('%Y-%m-%d'),
+                                       "end": data.index.tolist()[-1].strftime('%Y-%m-%d'),
+                                       "interval" : [interval]}
+                          },
+           "parameters" : {'common': data.columns.tolist(), 'optional': None},
+           "spatial" : None,
+           "organization" : None}
+        
+        self.local_sources=d
+        return data
+        
+    def __data_reader__(self,path=r'C:\Users\mlabadie\Documents\GitHub\weatherdata\example\Boigneville_2012_2013_h.csv',sep=';',column_name=['date', 'h', 'temperature_air',
+                                             'relative_humidity', 'rain',
+                                             'wind_speed', 'global_radiation'],skiprows=2,dec=","):
+        r""" Reader for my data boignonville
+
+        Parameters
+        ----------
+        path : regexp, optional
+            file path, by default r'C:\Users\mlabadie\Documents\GitHub\weatherdata\example\Boigneville_2012_2013_h.csv'
+        sep : str, optional
+            type of separator in my data, by default ';'
+        column_name : list, optional
+            column_name of data, by default ['date', 'h', 'temperature_air', 'relative_humidity', 'rain', 'wind_speed', 'global_radiation']
+        skiprows : int, optional
+        line of data begin, by default 2
+        dec : str, optional
+            type of decimal used in my file, by default ","
+        """
+        data=pandas.read_csv(path, names=column_name,
+                            sep=';', skiprows=skiprows, decimal=dec,encoding='latin-1')
+        data.index = pandas.to_datetime(data['date'].map(str) + ' ' + data['h'],
+                                        dayfirst=True)
+        data['date'] = data.index
+        
+        # convert Rg J/cm2 -> J.m-2.s-1
+        data['global_radiation'] *= (10000. / 3600)
+        
+        # convert Global radiation to PPFD -> µmol.m-2.s-1
+        #data["Par"]=data["global_radiation"]*0.48*4.6
+        
+        # convert wind km/h -> m.s-1
+        data['wind_speed'] *= (1000. / 3600)
+        data=data.drop(columns=["date", "h"])
+        
+        return data    
             
 
-class WeatherDataSource(WeatherDataHub):
-    def __init__(self, name, forecast,endpoint,df):
+class WeatherDataSource:
+    def __init__(self, name, forecast,endpoint,df=None):
         self.name = name
         self.forecast=forecast
         self.endpoint=endpoint
-        self.sources=None
+        self.sources=WeatherDataHub().__resources__
         self.ipm = IPM()
-        self.df= df
-        
+        self.df= df 
+    
+        # WeatherDataHub.__init__(self)   
   
     @property
     def __source__(self):
         
-        if self.sources is None:
-            self.sources=self.__resources__
+        # if self.sources is None:
+        #     self.sources=self.__resources__
             
         source= self.sources[self.name]
         return source
@@ -122,12 +217,19 @@ class WeatherDataSource(WeatherDataHub):
     
     @property               
     def parameter(self):
-        parameter= self.__source__["parameters"]
-        return parameter
+        df= WeatherDataHub().parameters
+        list_parameters= self.__source__["parameters"]["common"]
+        
+        if self.__source__["parameters"]["optional"]:
+            list_parameters.append(list_parameters)
+            
+        
+        return df[df["id"].isin(list_parameters)]
+    
     
     @property
     def stations(self):
-        if self.__source__["spatial"]["geoJSON"] is not None:
+        if "features" in json.loads(self.__source__["spatial"]["geoJSON"]):
             features=json.loads(self.__source__["spatial"]["geoJSON"])['features']
             
             #recupère les infos stations dans une properties
@@ -145,7 +247,7 @@ class WeatherDataSource(WeatherDataHub):
             df= pandas.DataFrame(stations)
             return df
         else:
-            print("No stations informations for this ressources")
+            print("No stations informations for this ressources \n the ressources asked in certainly a forcast \n please used longitude, latitude and altitude parameters to get data ")
         
     def data(self,
              parameters =[1002,3002], 
@@ -374,16 +476,46 @@ class WeatherDataSource(WeatherDataHub):
                 
         return ds
     
-    def dataframe_to_ipm(self,longitude=3.87, 
-                       latitude=43.61,
-                       altitude=0.0,
-                       timezone="Europe/Paris",
-                       interval=3600,
-                       convert_name={'temperature_air':1002,
-                                     "relative_humidity":3001,
-                                     "rain":2001,
-                                     "wind_speed":4005,
-                                     "global_radiation":5001},
+    def __dataset_to_ipm__(self,ds:xr.Dataset):
+        """Parser from dataset to weather ouput IPM format
+
+        Parameters
+        ----------
+        ds : xr.Dataset
+            weatherdata in xarray dataset format
+
+        Returns
+        -------
+        dict
+            IPM weather data from IPM weatherdata format
+        """
+        
+        timeStart=pandas.to_datetime(ds.time.values[0])
+        timesecondDate= pandas.to_datetime(ds.time.values[1])
+        timeEnd=pandas.to_datetime(ds.time.values[-1])
+        
+        interval= timesecondDate-timeStart
+        interval=interval.seconds
+        
+        timeStart=timeStart.strftime("%Y-%m-%dT%H:%M")+"Z"
+        timeEnd=timeEnd.strftime("%Y-%m-%dT%H:%M")+"Z"
+        
+        # parser ipm format
+        d={"timeStart":timeStart,
+        "timeEnd":timeEnd,
+        "interval":interval,
+        'weatherParameters':[int(el) for el in list(ds.data_vars)],
+        "locationWeatherData":[{"longitude":float(ds.lon.values),
+                                "latitude":float(ds.lat.values),
+                                "altitude":0,
+                                "amalgamation":list(np.repeat(0,len(ds.data_vars))),
+                                "data":ds.to_dataframe().drop(columns=['lat','lon']).to_numpy().tolist(),
+                                "qc":list(np.repeat(0,len(ds.data_vars))),
+                                "width":len(ds.data_vars),
+                                "length":len(ds.time)}]}
+        return [d]
+    
+    def to_ipm(self,
                        display="json"):
         """Convert weather dataframe into IPM weather output schema
 
@@ -411,19 +543,21 @@ class WeatherDataSource(WeatherDataHub):
         """
         
         
-        data=self.df
-        data=data.rename(columns=convert_name)
-        time=pandas.date_range(start=data.index[0],end=data.index[-1],tz="Europe/Paris",freq=str(interval)+"s").tz_convert("UTC").strftime('%Y-%m-%dT%H:%M:%S')+"Z"
+        data=self.endpoint
+        time=pandas.date_range(start=data.index.tolist()[0],
+                               end=data.index.tolist()[-1],
+                               tz=data.attrs["timezone"],
+                               freq=str(data.attrs["interval"])+"s").tz_convert("UTC").strftime('%Y-%m-%dT%H:%M:%S')+"Z"
         
         weather_ipm_schema={}
         weather_ipm_schema["timeStart"]=time.tolist()[0]
         weather_ipm_schema["timeEnd"]=time.tolist()[-1]
-        weather_ipm_schema["interval"]=interval
+        weather_ipm_schema["interval"]=data.attrs["interval"]
         weather_ipm_schema['weatherParameters']=data.columns.to_list()
         weather_ipm_schema["locationWeatherData"]=[
-            {"longitude":longitude,
-            "latitude":latitude,
-            "altitude":altitude,
+            {"longitude":data.attrs["longitude"],
+            "latitude":data.attrs["latitude"],
+            "altitude":data.attrs["altitude"],
             "amalgamation":np.repeat(0,data.shape[1]).tolist(),
             "data":np.array(data).tolist(),
             "qc":np.repeat(0,data.shape[1]).tolist(),
@@ -436,3 +570,70 @@ class WeatherDataSource(WeatherDataHub):
         else:
             responses=weather_ipm_schema
         return [responses]
+    
+    def station_plot(self,ds=None,varname=None,time=None,resample=None):
+        """_summary_
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            xarray.dataset from weather ressources
+        varname : str, optional
+        variable name to plot, if None plot station localisation by default None
+        time : int, optional
+            index of time, by default None
+        resample : str, optional
+            frequency that data can be resampling. resampling calculate is mean function according ds.time eg d for days, by default None
+        """
+        ext_lat_min=int(ds.lat.values.min()-1)
+        ext_lat_max=int(ds.lat.values.max()+1)
+        ext_lon_min=int(ds.lon.values.min()-1)
+        ext_lon_max=int(ds.lon.values.max()+1)
+        
+        if resample:
+            ds = ds.resample(time=resample).mean()
+        else:
+            ds = ds
+            
+        df=ds.to_dataframe()
+        fig = plt.figure(figsize=(12,8))
+        ax = fig.add_subplot(1,1,1,projection=ccrs.PlateCarree())
+        ax.add_feature(cfea.LAKES, zorder=3)
+        ax.add_feature(cfea.OCEAN, zorder=1)
+        ax.add_feature(cfea.COASTLINE, zorder=2)
+        ax.add_feature(cfea.LAND, zorder=1)
+        ax.add_feature(cfea.BORDERS, zorder=4)
+        ax.set_extent([ext_lon_min,ext_lon_max,ext_lat_min,ext_lat_max])
+        gl=ax.gridlines(draw_labels=True, zorder = 5)
+        gl.right_labels = False
+        gl.top_labels = False
+        
+        if (varname and time) is None:
+            ax.scatter(x=df["lon"].values,y=df["lat"].values,transform=ccrs.PlateCarree(),color='k',s=10)
+        else:
+            ds.isel(time=time).plot.scatter(x='lon',y='lat',hue=varname,
+                                ax=ax,cmap='inferno',vmin=int(ds[varname].min()),vmax=int(ds[varname].max()),
+                                transform=ccrs.PlateCarree(),marker='s',s=50, add_guide=True ,zorder=6)
+        #ax.text(x=df["lon"].values,y=df["lat"].values,s=df.index.get_level_values("location"),color="k")
+        # ax.text(x=float(ds.isel(time=0).lon.values)-0.5,y=float(ds.isel(time=0).lat.values),s=float(ds['1002'].isel(time=0).values),color="red")
+        # ax.text(x=float(ds.isel(time=0).lon.values)-0.5,y=float(ds.isel(time=0).lat.values)-0.2,s=float(ds['3002'].isel(time=0).values),color="blue")
+        
+    def plot(self,ds=None,varname=None, location=None,resample=None,date=None):
+            
+        if resample:
+            data=ds[varname].resample(time=resample).mean()
+            
+        else:
+            data=ds[varname]
+            
+        if location is not None:  
+            data_loc= data.sel(location=location)
+            data_loc.plot.line(x="time")
+        else:
+            data.plot.line(x="time")
+        
+        # if date is not None:
+        #     data_time = data.sel(time=date)
+        #     plt.bar(x=data_time.location.astype("str"), height=data_time.values) 
+        
+    
