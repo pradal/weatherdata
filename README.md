@@ -35,6 +35,14 @@ python setup.py install
     * numpy
     * xarray
     * agroservices
+    * requests (agroservices)
+    * appdirs (agroservices)
+    * bs4 (agroservices)
+    * colorlog (agroservices)
+    * requests_cache (agroservices)
+    * xarray (weatherdata)
+    * pandas
+    * jupyter
 
 ## Documentation
 
