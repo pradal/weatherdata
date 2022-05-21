@@ -10,13 +10,13 @@
 #       See accompanying file LICENSE.txt or copy at
 #           http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html
 #
-#       OpenAlea WebSite : http://openalea.gforge.inria.fr
+#       OpenAlea WebSite : http://github.com/openalea/weatherdata
 #
 # ==============================================================================
 """
 """
 # ==============================================================================
-from setuptools import setup, find_packages, Extension, Command
+from setuptools import setup, find_packages
 # ==============================================================================
 
 pkg_root_dir = 'src'
@@ -26,32 +26,35 @@ package_dir = dict([('', pkg_root_dir)] +
                    [(pkg, pkg_root_dir + "/" + pkg.replace('.', '/'))
                     for pkg in top_pkgs])
 
+_version = {}
+with open("src/weatherdata/version.py") as fp:
+    exec(fp.read(), _version)
+version = _version['version']
+
+description = 'Python data structure for handling weather data in OpenAlea.'
+long_description = 'Python data structure for handling weather data in OpenAlea.'
 
 setup(
     name="weatherdata",
-    version="0.1",
-    description="",
-    long_description="",
+    version=version,
+    description=description,
+    long_description=long_description,
 
     author="* Christian Fournier\n"
            "* Marc Labadie\n"
            "* Christophe Pradal\n",
 
-    author_email="* christian.fournier@inrae.fr\n"
-                 "*marc.labadie@inrae.fr\n"
-                 "christophe.pradal@cirad.fr\n",
     maintainer="",
     maintainer_email="",
 
     url="",
     license="Cecill-C",
-    keywords='',
+    keywords='openalea, DSS, weather',
 
     # package installation
     packages=packages,
     package_dir=package_dir,
     zip_safe=False,
-    #ext_modules=cythonize(extentions),
 
     # See MANIFEST.in
     include_package_data=True,
