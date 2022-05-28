@@ -1,4 +1,4 @@
-import openalea.weatherdata.wrapper.ipm_decision as ipm_decision
+import weatherdata.wrapper.ipm_decision as ipm_decision
 
 def test_get_data():
     df = ipm_decision.get_data()

@@ -10,7 +10,8 @@
 
 
 import pkg_resources
-__version__ = "0.1.0"
+from .version import version as _version
+__version__ = _version
 try:
     version = pkg_resources.require("weatherdata")[0].version
     __version__ = version
