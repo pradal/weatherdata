@@ -33,9 +33,9 @@ test:
     - weatherdata
   source_files:
     - test/**
-  commands:
-    - cd test
-    - pytest -v --ignore=test_weatherdata.py
+  #commands:
+  #  - cd test
+  #  - pytest -v --ignore=test_weatherdata.py
 about:
   home: {{ data.get('url') }}
   license: GPL-v3
