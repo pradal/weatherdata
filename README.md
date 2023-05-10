@@ -21,16 +21,9 @@ WeatherData is a Python package that transforms weather data retrieved from [agr
 ## Installation
 
 ```shell
-conda create -n weatherdata python pandas numpy xarray 
+conda create -n weatherdata -c openalea3 -c conda-forge weatherdata 
 conda activate weatherdata
 
-git clone https://github.com/H2020-IPM-openalea/agroservices.git
-cd agroservices
-python setup.py install
-
-git clone https://github.com/H2020-IPM-openalea/weatherdata.git
-cd weatherdata
-python setup.py install
 ```
 
 ## Requierements
@@ -58,7 +51,7 @@ All contributions, bug reports, bug fixes, documentation improvements, enhanceme
 
 A detailed overview on how to contribute can be found in the [contributing guide](http://virtualplants.github.io/contribute/devel/workflow-github.html#workflow-github).
 
-### contributors
+### Contributors
 
 <a href="https://github.com/H2020-IPM-openalea/weatherdata/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=H2020-IPM-openalea/weatherdata" />
