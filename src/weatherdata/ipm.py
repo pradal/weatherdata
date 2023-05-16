@@ -32,8 +32,8 @@ class WeatherDataHub:
         
         ..doctest::
         >>> wsh = WeatherDataHub()
-        >>> wsh.list_resources()
-        >>> wsh.get_resource(name = 'Finnish Meteorological Institute measured data')
+        >>> resources = wsh.list_resources()
+        >>> wsh.get_resource(name = resources.name.iat[0])
 
     """
 
@@ -54,7 +54,7 @@ class WeatherDataHub:
         if len(self.local_sources)>0:
             self.sources.append(self.local_sources)
         
-        return {item["name"]:item for item in self.sources}
+        return self.sources
     
     @property
     def list_resources(self):
@@ -69,9 +69,8 @@ class WeatherDataHub:
         #     return list(self.local_sources)
             
         # else: 
-        df= pandas.DataFrame(self.__resources__).T.reset_index()
-        df.rename({"index":"name"},inplace=True)
-        return df[["name","description","parameters"]]
+        df= pandas.DataFrame(self.__resources__).T
+        return df.loc[:,["name","description","parameters"]]
     
     @property                 
     def parameters(self):
@@ -229,26 +228,23 @@ class WeatherDataSource:
     
     @property
     def stations(self):
-        if "features" in json.loads(self.__source__["spatial"]["geoJSON"]):
-            features=json.loads(self.__source__["spatial"]["geoJSON"])['features']
-            
-            #recupère les infos stations dans une properties
-            stations=[feature["properties"] for feature in features]
-            
-            #recuperation et transformation des coordonnées
-            coord_tmp=[feature['geometry']['coordinates'] for feature in features]
-            station_coords= [{"latitude":float(coord[0]), "longitude":float(coord[1])} for coord in coord_tmp]
-            
-            # ajoute les coordonnées dans stations
-            for el in range(len(stations)):
-                stations[el].update(station_coords[el])
-            
-            # affichage des stations comme dataframe    
-            df= pandas.DataFrame(stations)
-            return df
-        else:
-            print("No stations informations for this ressources \n the ressources asked in certainly a forcast \n please used longitude, latitude and altitude parameters to get data ")
-        
+        stations = {}
+        if "features" in self.__source__["spatial"]["geoJSON"]:
+            features = self.__source__["spatial"]["geoJSON"]['features']
+            def _get_id(feature):
+                if 'id' in feature:
+                    return int(feature['id'])
+                else:
+                    return int(feature['properties']['id'])
+            def _get_properties(feature):
+                properties = feature["properties"]
+                coord = feature['geometry']['coordinates']
+                properties.update(dict(latitude=float(coord[0]), longitude=float(coord[1])))
+                return properties
+                #recupère les infos stations dans une properties
+            stations={_get_id(feature): _get_properties(feature) for feature in features}
+        df = pandas.DataFrame(stations).T
+        return df
     def data(self,
              parameters =[1002,3002], 
              stationId =[101104], 
@@ -265,44 +261,64 @@ class WeatherDataSource:
              usecache =False,
             savecache =False):
         
-        responses=[] 
-        
-        if self.forecast== False: 
-            times= pandas.date_range(timeStart,timeEnd,freq=str(interval)+'s',tz=timeZone)
+        responses=[]
 
-            # time transformation for query format
-            timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
-            timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
-            if times.tz._tzname == 'UTC':
-                timeStart +='Z'
-                timeEnd += 'Z'
-            else:
-                decstr = times[0].strftime('%z')
-                decstr = decstr[:-2] + ':' + decstr[-2:]
-                timeStart += decstr
-                timeEnd += decstr
+        times = pandas.date_range(timeStart, timeEnd, freq=str(interval) + 's', tz=timeZone)
+        # time transformation for query format
+        timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
+        timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
+        if times.tz._tzname == 'UTC':
+            timeStart += 'Z'
+            timeEnd += 'Z'
+        else:
+            decstr = times[0].strftime('%z')
+            decstr = decstr[:-2] + ':' + decstr[-2:]
+            timeStart += decstr
+            timeEnd += decstr
+        interval = pandas.Timedelta(times.freq).seconds
 
-            interval = pandas.Timedelta(times.freq).seconds
-                
+        param_list = []
+        path_list = []
+
+        if self.forecast== False:
             for station in stationId:
-                logging.info('start connecting to station %s' % station)
+                params = self.ipm.weatheradapter_params(self.__source__,
+                                                        weatherStationId=station,
+                                                        timeStart=timeStart,
+                                                        timeEnd=timeEnd,
+                                                        interval=interval,
+                                                        parameters=parameters)
                 path=os.path.join(pathCache(),str(station)+'_'+str(parameters)+"_"+timeStart.split("T")[0]+"_"+timeEnd.split("T")[0]+'.json')
-                
-                
+
+                param_list.append(params)
+                path_list.append(path)
+        else:
+            for el in range(len(latitude)):
+                path = os.path.join(pathCache(),
+                                    str(altitude[el]) + '_' + str(latitude[el]) + "_" + str(longitude[el]) + '.json')
+                params = self.ipm.weatheradapter_params(self.__source__,
+                                                        altitude=altitude[el],
+                                                        latitude=latitude[el],
+                                                        longitude=longitude[el],
+                                                        timeStart=timeStart,
+                                                        timeEnd=timeEnd,
+                                                        interval=interval,
+                                                        parameters=parameters)
+                param_list.append(params)
+                path_list.append(path)
+
+        for params, path in zip(param_list, path_list):
+            if self.forecast == False:
+                logging.info('start connecting to station %s' % station)
+
                 if usecache and os.path.exists(path):
                     with open(path) as f:
                         data=json.load(f)
-                else:        
-                    data = self.ipm.get_weatheradapter(
-                                    endpoint=self.endpoint,
-                                    weatherStationId=station,
-                                    timeStart=timeStart,
-                                    timeEnd=timeEnd,
-                                    interval=interval,
-                                    parameters=parameters,
-                                    credentials= credentials)
-                    
-                
+                else:
+                    data = self.ipm.get_weatheradapter(self.__source__,
+                                    params,
+                                    credentials=credentials)
+
                 if type(data) is dict:
                     responses.append(data)
                 elif type(data) is int:
@@ -311,77 +327,7 @@ class WeatherDataSource:
                 if savecache and type(data) is dict:
                     with open(path,'w') as f:
                         json.dump(data, f)  
-                
-        elif self.endpoint in ["https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/dmipoint/",'https://ipmdecisions.nibio.no/api/wx/rest/weatheradapter/lantmet/']:
-            stationId=None
-            
-            times= pandas.date_range(timeStart,timeEnd,freq=str(interval)+'S',tz=timeZone)
 
-            # time transformation for query format
-            timeStart = times[0].strftime('%Y-%m-%dT%H:%M:%S')
-            timeEnd = times[-1].strftime('%Y-%m-%dT%H:%M:%S')
-            if times.tz._tzname == 'UTC':
-                timeStart +='Z'
-                timeEnd += 'Z'
-            else:
-                decstr = times[0].strftime('%z')
-                decstr = decstr[:-2] + ':' + decstr[-2:]
-                timeStart += decstr
-                timeEnd += decstr
-                
-            for el in range(len(latitude)):
-                path=os.path.join(pathCache(),str(timeStart)+'_'+str(timeEnd)+'_'+str(parameters)+str(altitude[el])+'_'+str(latitude[el])+"_"+str(longitude[el])+'.json')
-            
-                if usecache and os.path.exists(path):
-                    with open(path) as f:
-                        data=json.load(f)
-                else:
-                    data= self.ipm.get_weatheradapter_forecast(
-                        endpoint=self.endpoint, 
-                        altitude= altitude[el],
-                        latitude=latitude[el],
-                        longitude=longitude[el],
-                        timeStart=timeStart,
-                        timeEnd=timeEnd,
-                        interval=interval,
-                        parameters = parameters
-                        )
-
-                if type(data) is dict:
-                    responses.append(data)
-                elif type(data) is int:
-                    logging.warning("HTTPError:%s for %s" %(data,[altitude[el],latitude[el],longitude[el]]))
-                
-                if savecache and type(data) is dict:
-                    with open(path,'w') as f:
-                        json.dump(data, f)
-        else:
-            stationId=None
-            timeStart==None
-            timeEnd==None
-            interval=None
-            for el in range(len(latitude)):
-                path=os.path.join(pathCache(),str(altitude[el])+'_'+str(latitude[el])+"_"+str(longitude[el])+'.json')
-            
-                if usecache and os.path.exists(path):
-                    with open(path) as f:
-                        data=json.load(f)
-                else:
-                    data= self.ipm.get_weatheradapter_forecast(
-                        endpoint=self.endpoint, 
-                        altitude= altitude[el],
-                        latitude=latitude[el],
-                        longitude=longitude[el])
-
-                if type(data) is dict:
-                    responses.append(data)
-                elif type(data) is int:
-                    logging.warning("HTTPError:%s for %s" %(data,[altitude[el],latitude[el],longitude[el]]))
-                
-                if savecache and type(data) is dict:
-                    with open(path,'w') as f:
-                        json.dump(data, f)
-        
         if display=="ds":
             return self.__convert_xarray_dataset__(responses,stationId,varname,display)
         else:
