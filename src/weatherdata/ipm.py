@@ -246,8 +246,8 @@ class WeatherDataSource:
         df = pandas.DataFrame(stations).T
         return df
     def data(self,
-             parameters =[1002,3002], 
-             stationId =[101104], 
+             parameters =None,
+             stationId =None,
              timeStart = '2020-06-12',
              timeEnd = '2020-07-03',
              timeZone = "UTC",
@@ -293,6 +293,7 @@ class WeatherDataSource:
                 param_list.append(params)
                 path_list.append(path)
         else:
+            stationId = None # controls the behaviour of response parsing to xarray
             for el in range(len(latitude)):
                 path = os.path.join(pathCache(),
                                     str(altitude[el]) + '_' + str(latitude[el]) + "_" + str(longitude[el]) + '.json')
@@ -311,22 +312,22 @@ class WeatherDataSource:
             if self.forecast == False:
                 logging.info('start connecting to station %s' % station)
 
-                if usecache and os.path.exists(path):
-                    with open(path) as f:
-                        data=json.load(f)
-                else:
-                    data = self.ipm.get_weatheradapter(self.__source__,
-                                    params,
-                                    credentials=credentials)
+            if usecache and os.path.exists(path):
+                with open(path) as f:
+                    data=json.load(f)
+            else:
+                data = self.ipm.get_weatheradapter(self.__source__,
+                                params,
+                                credentials=credentials)
 
-                if type(data) is dict:
-                    responses.append(data)
-                elif type(data) is int:
-                    logging.warning('HTTPError: %s for %s' %(data,station))   
-                
-                if savecache and type(data) is dict:
-                    with open(path,'w') as f:
-                        json.dump(data, f)  
+            if type(data) is dict:
+                responses.append(data)
+            elif type(data) is int:
+                logging.warning('HTTPError: %s for %s' %(data,station))
+
+            if savecache and type(data) is dict:
+                with open(path,'w') as f:
+                    json.dump(data, f)
 
         if display=="ds":
             return self.__convert_xarray_dataset__(responses,stationId,varname,display)

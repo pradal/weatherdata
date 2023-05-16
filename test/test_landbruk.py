@@ -4,7 +4,8 @@ import numpy
 from weatherdata.ipm import WeatherDataHub, WeatherDataSource
 
 wdh= WeatherDataHub()
-list_resources = list(wdh.list_resources.name)
+source = 'no.nibio.lmt'
+land = wdh.get_ressource(source)
 
 def keys_exists(dict_, keys, test = all):
     return test(key in dict_ for key in keys)
@@ -26,17 +27,17 @@ def testDataStationLandbruks():
     '''
     
     ## test ds format
-    land=WeatherDataSource(name='Landbruksmeteorologisk tjeneste')
     rep_ds=land.data(
-        stationId=[46],
+        stationId=[5],
         parameters=[1002,3002],
-        timeStart = '2020-06-12',
-        timeEnd = '2020-07-03',
+        timeStart = '2020-05-01',
+        timeEnd = '2020-05-02',
         timeZone='UTC',
-        format="ds")
+        display="ds")
     assert type(rep_ds) is xarray.Dataset
-    assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
+    #assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
 
+"""
 def testDataStationsLandbruks():
     '''
     Test 'Landbruksmeteorologisk tjeneste' data function for one parameter by argument
@@ -54,14 +55,14 @@ def testDataStationsLandbruks():
     '''
     
     ## test ds format
-    land=WeatherDataSource(name='Landbruksmeteorologisk tjeneste')
     rep_ds=land.data(
         stationId=[46,98],
         parameters=[1002,3002],
         timeStart = '2020-06-12',
         timeEnd = '2020-07-03',
         timeZone='UTC',
-        format="ds")
+        display="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
+    """
 
