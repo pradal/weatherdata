@@ -43,7 +43,7 @@ class WeatherDataHub:
         """
         self.ipm = IPM()
         self.sources = None
-        self.local_sources=[]
+        self.local_sources={}
     
     @property
     def __resources__(self):
@@ -52,7 +52,7 @@ class WeatherDataHub:
             self.sources= self.ipm.get_weatherdatasource()
             
         if len(self.local_sources)>0:
-            self.sources.append(self.local_sources)
+            self.sources.update(self.local_sources)
         
         return self.sources
     
@@ -103,7 +103,7 @@ class WeatherDataHub:
             the resource is unknown or the name of the resource is misspelled
         """        
         if name in self.local_sources:
-            return WeatherDataSource(name=name,forecast=None,endpoint=None,df=self.local_sources["endpoint"])
+            return WeatherDataSource(name=name,forecast=None,endpoint=None,df=self.local_sources[name]["endpoint"])
         else:
             keys = [item for item in self.__resources__]
             if name in keys:
@@ -135,7 +135,8 @@ class WeatherDataHub:
                     "timezone":timezone,
                     "interval":interval}
         
-        d={"id":"personal data",
+        d={"personal_data":{
+            "id":"personal data",
            "name": name,
            "description": "personal data",
            "public_URL": None,
@@ -152,8 +153,9 @@ class WeatherDataHub:
            "parameters" : {'common': data.columns.tolist(), 'optional': None},
            "spatial" : None,
            "organization" : None}
+        }
         
-        self.local_sources=d
+        self.local_sources.update(d)
         return data
         
     def __data_reader__(self,path=r'C:\Users\mlabadie\Documents\GitHub\weatherdata\example\Boigneville_2012_2013_h.csv',sep=';',column_name=['date', 'h', 'temperature_air',
@@ -491,6 +493,9 @@ class WeatherDataSource:
         
         
         data=self.endpoint
+        if data is None:
+            data = self.df
+
         time=pandas.date_range(start=data.index.tolist()[0],
                                end=data.index.tolist()[-1],
                                tz=data.attrs["timezone"],
@@ -560,7 +565,7 @@ class WeatherDataSource:
         else:
             ds.isel(time=time).plot.scatter(x='lon',y='lat',hue=varname,
                                 ax=ax,cmap='inferno',vmin=int(ds[varname].min()),vmax=int(ds[varname].max()),
-                                transform=ccrs.PlateCarree(),marker='s',s=50, add_guide=True ,zorder=6)
+                                transform=ccrs.PlateCarree(),marker='s',s=50 ,zorder=6)
         #ax.text(x=df["lon"].values,y=df["lat"].values,s=df.index.get_level_values("location"),color="k")
         # ax.text(x=float(ds.isel(time=0).lon.values)-0.5,y=float(ds.isel(time=0).lat.values),s=float(ds['1002'].isel(time=0).values),color="red")
         # ax.text(x=float(ds.isel(time=0).lon.values)-0.5,y=float(ds.isel(time=0).lat.values)-0.2,s=float(ds['3002'].isel(time=0).values),color="blue")
