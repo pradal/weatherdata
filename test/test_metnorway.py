@@ -4,7 +4,8 @@ import numpy
 from weatherdata.ipm import WeatherDataHub, WeatherDataSource
 
 wdh= WeatherDataHub()
-list_resources = list(wdh.list_resources.name)
+source = 'no.met.locationforecast'
+norway = wdh.get_ressource(source)
 
 def keys_exists(dict_, keys, test = all):
     return test(key in dict_ for key in keys)
@@ -22,8 +23,7 @@ def testDataStationMetNorway():
     
     # Met Norway Locationforecast resource
     ## test ds format
-    norway=wdh.get_ressource(name='Met Norway Locationforecast')
-    rep_ds=norway.data(latitude=[67.2828],longitude=[14.3711],altitude=[70],display="ds")
+    rep_ds=norway.data(latitude=[67.2828],longitude=[14.3711],altitude=[70], parameters=[1001, 3001, 2001, 4002],display="ds")
     assert type(rep_ds) is xarray.Dataset
     
     ### test coords
@@ -55,7 +55,7 @@ def testDataStationMetNorway():
     ### test ds attribute
     assert type(rep_ds.attrs) is dict
     assert keys_exists(rep_ds.attrs,('weatherRessource','timeStart','timeEnd','parameters'))
-    assert rep_ds.attrs['weatherRessource']=='Met Norway Locationforecast'
+    assert rep_ds.attrs['weatherRessource']==source
     #assert rep_ds.attrs['timeStart']=='2022-05-23T09:00:00.000000000'
     #assert rep_ds.attrs['timeEnd']=='2022-06-01T18:00:00.000000000'
     assert rep_ds.attrs['parameters']==['1001', '3001', '2001', '4002']
@@ -64,8 +64,7 @@ def testDataStationMetNorway():
     assert rep_ds.to_dataframe().shape[1]==6
     assert rep_ds.to_dataframe().index.names==['time', 'location']
 
-""" No work 
-    
+"""
 def testDataStationsMetNorway():
     '''
     Test Met_Norway data function
@@ -79,8 +78,8 @@ def testDataStationsMetNorway():
     
     # Met Norway Locationforecast resource
     ## test ds format
-    norway=wdh.get_ressource(name='Met Norway Locationforecast')
-    rep_ds=norway.data(latitude=[67.2828, 68.3737],longitude=[14.3711, 10.1515],altitude=[70, 0],display="ds")
+    rep_ds=norway.data(latitude=[67.2828, 68.3737],longitude=[14.3711, 10.1515],altitude=[70, 0],
+                       parameters=[1001, 3001, 2001, 4002],display="ds")
     assert type(rep_ds) is xarray.Dataset
     assert keys_exists(dict(rep_ds.dims),('alt','lat','location','lon','time'))
     
@@ -115,7 +114,7 @@ def testDataStationsMetNorway():
     ### test ds attribute
     assert type(rep_ds.attrs) is dict
     assert keys_exists(rep_ds.attrs,('weatherRessource','longitude','latitude','timeStart','timeEnd','parameters'))
-    assert rep_ds.attrs['weatherRessource']=='Met Norway Locationforecast'
+    assert rep_ds.attrs['weatherRessource']==source
     assert rep_ds.attrs['longitude']==[10.1515,14.3711]
     assert rep_ds.attrs['latitude']==[67.2828,68.3737]
     assert rep_ds.attrs['parameters']==['1001', '3001', '2001', '4002']
@@ -135,4 +134,4 @@ def testDataStationsMetNorway():
         assert rep_json[el]['locationWeatherData'][0]['longitude'] in [14.3711, 10.1515]
         assert rep_json[el]['locationWeatherData'][0]['latitude'] in [67.2828, 68.3737]
         assert rep_json[el]['locationWeatherData'][0]['altitude'] in [70,0.]
-""" 
+"""
